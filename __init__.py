@@ -6,6 +6,11 @@ class Communications(MycroftSkill):
     def __init__(self):
         MycroftSkill.__init__(self)
 
+    def initialize(self):
+        self.add_event('skill.communications.intercom.new', self.handle_new_intercom)
+        # Start the server
+
+
     def get_ips(self, message_type):
         """Get the ip addresses of Mycroft devices
         Returns a list of ip addresses with ports
@@ -52,10 +57,6 @@ class Communications(MycroftSkill):
             self.make_request(mycroft_ips, "/communications/intercom/new", message)
         elif message_type == "message":
             pass
-
-
-    def initialize(self):
-        self.add_event('skill.communications.intercom.new', self.handle_new_intercom)
 
     def handle_new_intercom(self, message):
         """A intercom was called"""

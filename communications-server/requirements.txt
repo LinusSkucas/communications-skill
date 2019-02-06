@@ -1,2 +1,0 @@
-websocket-client==0.32.0
-flask
