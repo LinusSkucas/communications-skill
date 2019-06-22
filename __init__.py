@@ -30,7 +30,8 @@ class Communications(MycroftSkill):
         """A intercom was called"""
         # Get the announcement
         announcement = message.data.get("message")
-        # TODO: Make a bling sound!
+        # Make a BLING sound (Might want to change this)
+        self.acknoledge()
         self.speak_dialog("new.intercom", data={"message": announcement})
 
     @intent_file_handler('broadcast.intercom.intent')
