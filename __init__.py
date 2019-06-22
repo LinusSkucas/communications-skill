@@ -1,13 +1,24 @@
 from mycroft import MycroftSkill, intent_file_handler
-# TODO: import new client code
+from . import shippingHandling
+import py2p
+import threading
+
+
 
 class Communications(MycroftSkill):
     def __init__(self):
         MycroftSkill.__init__(self)
 
     def initialize(self):
-        self.add_event('skill.communications.intercom.new', self.handle_new_intercom)  # TODO: Get recieving code to messagebus message here
-        # Start the server
+        self.add_event('skill.communications.intercom.new',
+                       self.handle_new_intercom)
+        # Start the server/ get the socket
+        self.sock = py2p.MeshSocket("0.0.0.0", 4444)
+        self.log.info("Starting the receiving loop...")
+        # Start up a new thread for recieveing messages
+        t = threading.Thread(target=shippingHandling.startLoop, args=(self.sock,), daemon=True)
+        t.start()
+        # TODO: Auto connect to others
 
     def send_intercom(self, message):
         """Send messages to all other devices
@@ -37,4 +48,3 @@ class Communications(MycroftSkill):
 
 def create_skill():
     return Communications()
-
