@@ -34,10 +34,10 @@ def startLoop(socket):
             send_communication_to_messagebus("intercom", message)
 
 
-def send_message(socket, message, message_type, recipients=None):
+def send_message(socket, message, message_type, recipient=None):
     """TODO: REVAMP: People, intercom, specific devices
     Args: TYPE and Message and WHO FOR (Needed if not intercom"""
-    if message_type is not "intercom" and recipients is None:
+    if message_type is not "intercom" and recipient is None:
         # Check that when there is a message, it has a specified recipient
         raise ValueError("[communicationsSkill/shippingHandling] To send a message, you need to specify a recipient")
     # TODO: change so that we can support more than just intercom and just one device
