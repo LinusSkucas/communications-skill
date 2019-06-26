@@ -16,6 +16,7 @@
 import time
 
 from mycroft.messagebus.send import send
+import json
 
 
 def send_communication_to_messagebus(msg_type, msg):
@@ -25,13 +26,15 @@ def send_communication_to_messagebus(msg_type, msg):
 def startLoop(socket):
     # Get connected
     # Start the forever loop
+    # TODO: Check that recipients is me or all.
+    # TODO: Check and act acordingly on wheather it is a message, configure or intercom
     while True:
         time.sleep(1)
         msg = socket.recv()
         if msg is not None:
-            message = str(msg.packets[1])
+            message = json.loads(str(msg.packets[1]))
             # Send to messagebus
-            send_communication_to_messagebus("intercom", message)
+            send_communication_to_messagebus("intercom", message["data"])
 
 
 def send_message(socket, message, message_type, recipient=None):
@@ -41,7 +44,8 @@ def send_message(socket, message, message_type, recipient=None):
         # Check that when there is a message, it has a specified recipient
         raise ValueError("[communicationsSkill/shippingHandling] To send a message, you need to specify a recipient")
     # TODO: change so that we can support more than just intercom and just one device
+    if recipient is None:
+        recipient = "all"
+    message = {"action": message_type, "recipients": recipient, "data": message}
     time.sleep(1)
-    if message_type is "intercom":
-        # send intercom message
-        socket.send(str(message))
+    socket.send(str(json.dumps(message)))
