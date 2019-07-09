@@ -30,9 +30,15 @@ class Communications(MycroftSkill):
         self.sock = py2p.MeshSocket("0.0.0.0", 4444)
         self.log.info("Starting the receiving loop...")
         # Start up a new thread for recieveing messages
-        t = threading.Thread(target=shippingHandling.startLoop, args=(self.sock,), daemon=True)
-        t.start()
-        # TODO: Auto connect to others
+        r = threading.Thread(target=shippingHandling.start_receiving_Loop, args=(self.sock,), daemon=True)
+        r.start()
+        # Auto connect to others:
+        # Start new advertisment thread
+        a = threading.Thread(target=shippingHandling.start_advertisement_loop, args=(self.sock,), daemon=True)
+        a.start()
+        # Begin Listener thread
+        L = threading.Thread(target=shippingHandling.start_new_service_listener_loop, args=(self.sock,), daemon=True)
+        L.start()
 
     def send_intercom(self, message):
         """Send messages to all other devices
