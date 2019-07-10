@@ -35,9 +35,9 @@ def start_receiving_Loop(socket):
         time.sleep(1)
         msg = socket.recv()
         if msg is not None:
-            message = json.loads(str(msg.packets[1]))
+            # message = json.loads(str(msg.packets[1]))
             # Send to messagebus
-            send_communication_to_messagebus("intercom", message["data"])
+            send_communication_to_messagebus("intercom", msg.packets[1])
 
 
 def start_advertisement_loop():
@@ -79,12 +79,13 @@ class MycroftAdvertisimentListener(object):
         if bool(info.properties) and b"type" in info.properties and info.properties.get(b'type') == b"mycroft_device":
             # Get ip address
             ip = str(ipaddress.ip_address(info.addresses[0]))
-            print(ip)
-            # TODO: start configuring (database, get name etc...)
+            send_communication_to_messagebus("device", ip)
 
 
-def start_new_service_listener_loop():
+def start_new_service_listener_loop(sock):
     """Respond to new services: add them to the database"""
+    global socket
+    socket = sock
     zeroconf = Zeroconf()
     listener = MycroftAdvertisimentListener()
     browser = ServiceBrowser(zeroconf, "_http._tcp.local.", listener)
@@ -95,7 +96,7 @@ def start_new_service_listener_loop():
         zeroconf.close()
 
 
-def send_message(socket, message, message_type, recipient=None):
+def send_message(socket, message, message_type, mycroft_id, mycroft_name, recipient=None):
     """TODO: REVAMP: People, intercom, specific devices
     Args: TYPE and Message and WHO FOR (Needed if not intercom"""
     if message_type is not "intercom" and recipient is None:
@@ -104,6 +105,8 @@ def send_message(socket, message, message_type, recipient=None):
     # TODO: change so that we can support more than just intercom and just one device
     if recipient is None:
         recipient = "all"
-    message = {"action": message_type, "recipients": recipient, "data": message}
+    message = {"action": message_type, "recipients": recipient, "data": message,
+               "sender": {"mycroft_id": mycroft_id,
+                          "mycroft_name": mycroft_name}}
     time.sleep(1)
     socket.send(str(json.dumps(message)))

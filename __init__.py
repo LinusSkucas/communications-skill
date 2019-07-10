@@ -15,6 +15,8 @@
 import threading
 import py2p
 from mycroft import MycroftSkill, intent_file_handler
+from mycroft.api import DeviceApi
+import json
 
 from . import shippingHandling
 
@@ -26,6 +28,8 @@ class Communications(MycroftSkill):
     def initialize(self):
         self.add_event('skill.communications.intercom.new',
                        self.handle_new_intercom)
+        self.add_event('skill.communications.device.new',
+                       self.handle_new_device)
         # Start the server/ get the socket
         self.sock = py2p.MeshSocket("0.0.0.0", 4444)
         self.log.info("Starting the receiving loop...")
@@ -34,25 +38,34 @@ class Communications(MycroftSkill):
         r.start()
         # Auto connect to others:
         # Start new advertisment thread
-        a = threading.Thread(target=shippingHandling.start_advertisement_loop, args=(self.sock,), daemon=True)
+        self.log.info("Starting the device advertisment thread...")
+        a = threading.Thread(target=shippingHandling.start_advertisement_loop, daemon=True)
         a.start()
         # Begin Listener thread
+        self.log.info("Starting the listener thread...")
         L = threading.Thread(target=shippingHandling.start_new_service_listener_loop, args=(self.sock,), daemon=True)
         L.start()
 
     def send_intercom(self, message):
         """Send messages to all other devices
         """
-        shippingHandling.send_message(self.sock, message, message_type="intercom")
+        device = DeviceApi().get()
+        shippingHandling.send_message(self.sock, message, message_type="intercom",
+                                      mycroft_id=device["uuid"], mycroft_name=device["name"])
 
     def handle_new_intercom(self, message):
         """A intercom was called"""
         # Get the announcement
-        announcement = message.data.get("message")
+        announcement = json.loads(message.data.get("message"))["data"]
         self.log.info("New intercom announcement incoming!: {}".format(announcement))
         # Make a BLING sound (Might want to change this)
         self.acknowledge()
         self.speak_dialog("new.intercom", data={"message": announcement})
+
+    def handle_new_device(self, message):
+        ip = message.data.get("message")
+        self.log.info("New Mycroft Communications device at: {}".format(ip))
+        self.sock.connect(str(ip), 4444)
 
     @intent_file_handler('broadcast.intercom.intent')
     def handle_communications(self, message):
