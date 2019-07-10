@@ -16,6 +16,9 @@
 import time
 
 from mycroft.messagebus.send import send
+from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser
+import ipaddress
+import netifaces
 import json
 
 
@@ -23,7 +26,7 @@ def send_communication_to_messagebus(msg_type, msg):
     send("skill.communications.{}.new".format(msg_type), {"message": "{}".format(str(msg))})
 
 
-def startLoop(socket):
+def start_receiving_Loop(socket):
     # Get connected
     # Start the forever loop
     # TODO: Check that recipients is me or all.
@@ -32,12 +35,68 @@ def startLoop(socket):
         time.sleep(1)
         msg = socket.recv()
         if msg is not None:
-            message = json.loads(str(msg.packets[1]))
+            # message = json.loads(str(msg.packets[1]))
             # Send to messagebus
-            send_communication_to_messagebus("intercom", message["data"])
+            send_communication_to_messagebus("intercom", msg.packets[1])
 
 
-def send_message(socket, message, message_type, recipient=None):
+def start_advertisement_loop():
+    """Start advertising to other devices about the ip address"""
+    # Get the local ip address
+    try:
+        ip = netifaces.ifaddresses("wlan0").get(netifaces.AF_INET)[0].get("addr")
+    except ValueError:
+        ip = netifaces.ifaddresses("en0").get(netifaces.AF_INET)[0].get("addr")  # Try with ethernet if there is no ip
+
+    info = ServiceInfo(
+        "_http._tcp.local.",
+        "Mycroft Communications Skill._http._tcp.local.",
+        addresses=[ipaddress.ip_address(ip).packed],
+        port=4444,
+        properties={"type": "mycroft_device"},
+    )
+
+    zeroconf = Zeroconf()
+    # Registering service
+    zeroconf.register_service(info)
+    try:
+        while True:
+            time.sleep(0.1)
+    finally:
+        # Unregister service for whatever reason
+        zeroconf.unregister_service(info)
+        zeroconf.close()
+
+
+class MycroftAdvertisimentListener(object):
+
+    def remove_service(self, zeroconf, type, name):
+        # We should maybe do something here. Not sure.
+        pass
+
+    def add_service(self, zeroconf, service_type, name):
+        info = zeroconf.get_service_info(service_type, name)
+        if bool(info.properties) and b"type" in info.properties and info.properties.get(b'type') == b"mycroft_device":
+            # Get ip address
+            ip = str(ipaddress.ip_address(info.addresses[0]))
+            send_communication_to_messagebus("device", ip)
+
+
+def start_new_service_listener_loop(sock):
+    """Respond to new services: add them to the database"""
+    global socket
+    socket = sock
+    zeroconf = Zeroconf()
+    listener = MycroftAdvertisimentListener()
+    browser = ServiceBrowser(zeroconf, "_http._tcp.local.", listener)
+    try:
+        while True:
+            pass
+    finally:
+        zeroconf.close()
+
+
+def send_message(socket, message, message_type, mycroft_id, mycroft_name, recipient=None):
     """TODO: REVAMP: People, intercom, specific devices
     Args: TYPE and Message and WHO FOR (Needed if not intercom"""
     if message_type is not "intercom" and recipient is None:
@@ -46,6 +105,8 @@ def send_message(socket, message, message_type, recipient=None):
     # TODO: change so that we can support more than just intercom and just one device
     if recipient is None:
         recipient = "all"
-    message = {"action": message_type, "recipients": recipient, "data": message}
+    message = {"action": message_type, "recipients": recipient, "data": message,
+               "sender": {"mycroft_id": mycroft_id,
+                          "mycroft_name": mycroft_name}}
     time.sleep(1)
     socket.send(str(json.dumps(message)))
