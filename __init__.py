@@ -17,6 +17,7 @@ import py2p
 from mycroft import MycroftSkill, intent_file_handler
 from mycroft.api import DeviceApi
 import json
+import time
 
 from . import shippingHandling
 
@@ -31,15 +32,16 @@ class Communications(MycroftSkill):
         self.add_event('skill.communications.device.new',
                        self.handle_new_device)
         # Start the server/ get the socket
-        self.sock = py2p.MeshSocket("0.0.0.0", 4444)
+        self.sock = py2p.MeshSocket("0.0.0.0", 4445)
         self.log.info("Starting the receiving loop...")
-        # Start up a new thread for recieveing messages
-        r = threading.Thread(target=shippingHandling.start_receiving_Loop, args=(self.sock,), daemon=True)
+        # Start up a new thread for receiving messages
+        device = DeviceApi().get()
+        r = threading.Thread(target=shippingHandling.start_receiving_Loop, args=(self.sock, device["uuid"],), daemon=True)  # nopep8
         r.start()
         # Auto connect to others:
-        # Start new advertisment thread
-        self.log.info("Starting the device advertisment thread...")
-        a = threading.Thread(target=shippingHandling.start_advertisement_loop, daemon=True)
+        # Start new advertisement thread
+        self.log.info("Starting the device advertisement thread...")
+        a = threading.Thread(target=shippingHandling.start_advertisement_loop, args=(device["name"],), daemon=True)
         a.start()
         # Begin Listener thread
         self.log.info("Starting the listener thread...")
@@ -65,7 +67,8 @@ class Communications(MycroftSkill):
     def handle_new_device(self, message):
         ip = message.data.get("message")
         self.log.info("New Mycroft Communications device at: {}".format(ip))
-        self.sock.connect(str(ip), 4444)
+        self.sock.connect(str(ip), 4445)
+        self.log.info("Done connecting to device")
 
     @intent_file_handler('broadcast.intercom.intent')
     def handle_communications(self, message):

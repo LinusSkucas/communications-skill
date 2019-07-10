@@ -26,21 +26,28 @@ def send_communication_to_messagebus(msg_type, msg):
     send("skill.communications.{}.new".format(msg_type), {"message": "{}".format(str(msg))})
 
 
-def start_receiving_Loop(socket):
-    # Get connected
+def start_receiving_Loop(socket, mycroft_id):
     # Start the forever loop
-    # TODO: Check that recipients is me or all.
-    # TODO: Check and act acordingly on wheather it is a message, configure or intercom
     while True:
         time.sleep(1)
         msg = socket.recv()
         if msg is not None:
-            # message = json.loads(str(msg.packets[1]))
-            # Send to messagebus
-            send_communication_to_messagebus("intercom", msg.packets[1])
+            action = json.loads(str(msg.packets[1]))["action"]
+            recipient = json.loads(str(msg.packets[1]))["recipients"]
+            # Only react to message if is to me
+            if recipient == "all" or recipient == mycroft_id:
+                if action == "intercom":
+                    # Send to messagebus: intercom
+                    send_communication_to_messagebus("intercom", msg.packets[1])
+                elif action == "call":
+                    # Handle call etc...
+                    pass
+                # Do more handling here
+                else:
+                    pass
 
 
-def start_advertisement_loop():
+def start_advertisement_loop(name):
     """Start advertising to other devices about the ip address"""
     # Get the local ip address
     try:
@@ -50,7 +57,7 @@ def start_advertisement_loop():
 
     info = ServiceInfo(
         "_http._tcp.local.",
-        "Mycroft Communications Skill._http._tcp.local.",
+        "Mycroft Communications Skill - {}._http._tcp.local.".format(name),
         addresses=[ipaddress.ip_address(ip).packed],
         port=4444,
         properties={"type": "mycroft_device"},
@@ -96,15 +103,12 @@ def start_new_service_listener_loop(sock):
         zeroconf.close()
 
 
-def send_message(socket, message, message_type, mycroft_id, mycroft_name, recipient=None):
-    """TODO: REVAMP: People, intercom, specific devices
+def send_message(socket, message, message_type, mycroft_id, mycroft_name, recipient="all"):
+    """
     Args: TYPE and Message and WHO FOR (Needed if not intercom"""
     if message_type is not "intercom" and recipient is None:
         # Check that when there is a message, it has a specified recipient
         raise ValueError("[communicationsSkill/shippingHandling] To send a message, you need to specify a recipient")
-    # TODO: change so that we can support more than just intercom and just one device
-    if recipient is None:
-        recipient = "all"
     message = {"action": message_type, "recipients": recipient, "data": message,
                "sender": {"mycroft_id": mycroft_id,
                           "mycroft_name": mycroft_name}}
