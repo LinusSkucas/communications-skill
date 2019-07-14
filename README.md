@@ -1,5 +1,5 @@
 ## Communications
-A local intercom, messaging and (video) calling skill for mycroft
+A local intercom, messaging and (video) calling skill for Mycroft!
 
 ## Description
 

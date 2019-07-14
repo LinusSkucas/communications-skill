@@ -1,82 +1,87 @@
+# Copyright 2019 Linus S.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import threading
+import py2p
 from mycroft import MycroftSkill, intent_file_handler
-import requests
+from mycroft.api import DeviceApi
 import json
+import time
+
+from . import shippingHandling
+
 
 class Communications(MycroftSkill):
     def __init__(self):
         MycroftSkill.__init__(self)
 
-    def get_ips(self, message_type):
-        """Get the ip addresses of Mycroft devices
-        Returns a list of ip addresses with ports
-        """
-        #Get the ips
-        # todo: tell user to set up device
-        if message_type == "intercom":
-            mycroft_ips = self.settings.get("mycroft_ips")
-            self.log.info("Intercom")
-            self.settings["mycroft_ips"] = ["10.0.1.36"]
-
-        # TODO: do a messaging - Only find one ip
-
-        ips = []
-
-        # add ports
-        for ip in mycroft_ips:
-            ips.append(self._add_port(ip))
-
-        return ips
-
-
-    def _add_port(self, ip):
-        """Adds the port to the ip address"""
-        # todo: Should make this port configurable
-        return ip +":8090"
-
-    def _make_request(self, server, url, message):
-        """make the request to the other web servers"""
-        requests.post("http://"+server+url, json={"message": message})
-
-    def make_request(self, servers, url, message):
-        """Send multiple requests to multiple servers"""
-        for server in servers:
-            self._make_request(server, url, message)
-
-    def send_message(self, message, message_type):
-        """Send messages to other devices
-        Intercom -> To all devices
-        Messaging -> To a specific device
-        """
-        if message_type == "intercom":
-            mycroft_ips = self.get_ips(message_type)
-            self.make_request(mycroft_ips, "/communications/intercom/new", message)
-        elif message_type == "message":
-            pass
-
-
     def initialize(self):
-        self.add_event('skill.communications.intercom.new', self.handle_new_intercom)
+        self.add_event('skill.communications.intercom.new',
+                       self.handle_new_intercom)
+        self.add_event('skill.communications.device.new',
+                       self.handle_new_device)
+        # Start the server/ get the socket
+        self.sock = py2p.MeshSocket("0.0.0.0", 4445)
+        self.log.info("Starting the receiving loop...")
+        # Start up a new thread for receiving messages
+        device = DeviceApi().get()
+        r = threading.Thread(target=shippingHandling.start_receiving_Loop, args=(self.sock, device["uuid"],), daemon=True)  # nopep8
+        r.start()
+        # Auto connect to others:
+        # Start new advertisement thread
+        self.log.info("Starting the device advertisement thread...")
+        a = threading.Thread(target=shippingHandling.start_advertisement_loop, args=(device["name"],), daemon=True)
+        a.start()
+        # Begin Listener thread
+        self.log.info("Starting the listener thread...")
+        L = threading.Thread(target=shippingHandling.start_new_service_listener_loop, args=(self.sock,), daemon=True)
+        L.start()
+
+    def send_intercom(self, message):
+        """Send messages to all other devices
+        """
+        device = DeviceApi().get()
+        shippingHandling.send_message(self.sock, message, message_type="intercom",
+                                      mycroft_id=device["uuid"], mycroft_name=device["name"])
 
     def handle_new_intercom(self, message):
         """A intercom was called"""
         # Get the announcement
-        announcement = message.data.get("message")
+        announcement = json.loads(message.data.get("message"))["data"]
+        self.log.info("New intercom announcement incoming!: {}".format(announcement))
+        # Make a BLING sound (Might want to change this)
+        self.acknowledge()
         self.speak_dialog("new.intercom", data={"message": announcement})
+
+    def handle_new_device(self, message):
+        ip = message.data.get("message")
+        self.log.info("New Mycroft Communications device at: {}".format(ip))
+        self.sock.connect(str(ip), 4445)
+        self.log.info("Done connecting to device")
 
     @intent_file_handler('broadcast.intercom.intent')
     def handle_communications(self, message):
         # Get the announcement
         announcement = message.data.get("announcement")
         while not announcement:
-            announcement = self.get_response("make.new.announcement")
+            announcement = self.get_response("get.new.announcement.name")
 
         # OKay, we got the announcement
         # Time to send the message to all...
-        self.send_message(announcement, "intercom")
-
+        self.send_intercom(announcement)
         self.speak_dialog('broadcasting.intercom')
 
 
 def create_skill():
     return Communications()
-
