@@ -1,5 +1,5 @@
 dependencies:
   python:
-    - pyp2p
     - zeroconf
-    - netifaces
+    - ifaddr
+    - py2p
