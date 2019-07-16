@@ -18,12 +18,33 @@ import time
 from mycroft.messagebus.send import send
 from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser
 import ipaddress
-import netifaces
+from ifaddr import get_adapters
 import json
 
 
 def send_communication_to_messagebus(msg_type, msg):
     send("skill.communications.{}.new".format(msg_type), {"message": "{}".format(str(msg))})
+
+
+def get_ip():
+    ignore_list = ['lo', "lo0"]
+    res = {}
+    for iface in get_adapters():
+        # ignore "lo" (the local loopback)
+        if iface.ips and iface.name not in ignore_list:
+            for addr in iface.ips:
+                if addr.is_IPv4:
+                    res[iface.nice_name] = addr.ip
+                    break
+    if res.get("wlan"):
+        return res.get("wlan")
+    elif res.get("en0"):
+        return res.get("en0")
+    elif res.get("eth0"):
+        return res.get("eth0")
+    else:
+        # We don't know which one. Return the first one.
+        return list(res.values())[0]
 
 
 def start_receiving_Loop(socket, mycroft_id):
@@ -50,10 +71,7 @@ def start_receiving_Loop(socket, mycroft_id):
 def start_advertisement_loop(name):
     """Start advertising to other devices about the ip address"""
     # Get the local ip address
-    try:
-        ip = netifaces.ifaddresses("wlan0").get(netifaces.AF_INET)[0].get("addr")
-    except ValueError:
-        ip = netifaces.ifaddresses("en0").get(netifaces.AF_INET)[0].get("addr")  # Try with ethernet if there is no ip
+    ip = get_ip()
 
     info = ServiceInfo(
         "_http._tcp.local.",
