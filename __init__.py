@@ -36,7 +36,8 @@ class Communications(MycroftSkill):
         self.log.info("Starting the receiving loop...")
         # Start up a new thread for receiving messages
         device = DeviceApi().get()
-        r = threading.Thread(target=shippingHandling.start_receiving_Loop, args=(self.sock, device["uuid"],), daemon=True)  # nopep8
+        r = threading.Thread(target=shippingHandling.start_receiving_Loop, args=(self.sock, device["uuid"],),
+                             daemon=True)
         r.start()
         # Auto connect to others:
         # Start new advertisement thread
