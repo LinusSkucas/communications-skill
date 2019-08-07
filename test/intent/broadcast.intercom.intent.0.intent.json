@@ -1,7 +1,0 @@
-{
-    "intent": {
-        "announcement": "dinner is ready"
-    },
-    "intent_type": "broadcast.intercom.intent",
-    "utterance": "Announce dinner is ready"
-}
