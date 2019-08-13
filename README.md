@@ -17,7 +17,7 @@ On certain devices (most likely the Mark I), you will have to allow incoming con
 **If the skill does not work, make sure you've entered those commands, and restarted your device**
 
 **Security**
-The skill does try to do some basic security implementations, however you ~**MUST**~ run this on a WPA2 secured wifi network, if you use wifi.
+The skill does try to do some basic security implementations, however you **MUST** run this on a WPA2 secured wifi network, if you use wifi.
 
 **Roadmap**
 This is only the beginning of this skill!
