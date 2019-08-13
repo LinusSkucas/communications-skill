@@ -11,6 +11,7 @@ After they connect, you can say something like "Announce dinner's ready" and all
 On certain devices (most likely the Mark I), you will have to allow incoming connections through the firewall. Run the following commands on your device:
 
 `sudo ufw allow from any to any port 4445 proto tcp`
+
 `sudo ufw allow from any to any port 4446 proto tcp`
 
 **If the skill does not work, make sure you've entered those commands, and restarted your device**
