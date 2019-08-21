@@ -2,7 +2,7 @@
 name: Bug Report
 about: Report bugs/error in the communications skill here.
 title: "[BUG] "
-labels: Needs validation, bug
+labels: bug
 assignees: ''
 
 ---
