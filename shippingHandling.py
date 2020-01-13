@@ -23,7 +23,7 @@ import json
 
 
 def send_communication_to_messagebus(msg_type, msg):
-    send("skill.communications.{}.new".format(msg_type), {"message": "{}".format(str(msg))})
+    send("skill.communications.{}.new".format(msg_type), {"message": msg})
 
 
 def get_ip():
@@ -56,19 +56,23 @@ def start_receiving_Loop(socket, mycroft_id):
             action = json.loads(str(msg.packets[1]))["action"]
             recipient = json.loads(str(msg.packets[1]))["recipients"]
             # Only react to message if is to me
+            # TODO: CAN BE REFACTORED
+            # Also, don't send the json over the message bus
             if recipient == "all" or recipient == mycroft_id:
                 if action == "intercom":
                     # Send to messagebus: intercom
-                    send_communication_to_messagebus("intercom", msg.packets[1])
-                elif action == "call":
-                    # Handle call etc...
-                    pass
+                    send_communication_to_messagebus("intercom", str(msg.packets[1]))
+                elif action == "message":
+                    # Handle message
+                    message = json.loads(str(msg.packets[1]))["data"]
+                    sender = json.loads(str(msg.packets))["sender"]["mycroft_name"]
+                    send_communication_to_messagebus("message", {"message": message, "sender": sender})
                 # Do more handling here
                 else:
                     pass
 
 
-def start_advertisement_loop(name):
+def start_advertisement_loop(name, uuid, description):
     """Start advertising to other devices about the ip address"""
     # Get the local ip address
     ip = get_ip()
@@ -78,7 +82,7 @@ def start_advertisement_loop(name):
         "Mycroft Communications Skill - {}._http._tcp.local.".format(name),
         addresses=[ipaddress.ip_address(ip).packed],
         port=4444,
-        properties={"type": "mycroft_device"},
+        properties={"type": "mycroft_device", "uuid": uuid, "name": name, "description": description},
     )
 
     zeroconf = Zeroconf()
@@ -104,7 +108,10 @@ class MycroftAdvertisimentListener(object):
         if bool(info.properties) and b"type" in info.properties and info.properties.get(b'type') == b"mycroft_device":
             # Get ip address
             ip = str(ipaddress.ip_address(info.addresses[0]))
-            send_communication_to_messagebus("device", ip)
+            name = str(info.properties.get(b"name"))
+            description = str(info.properties.get(b"description"))
+            uuid = str(info.properties.get(b"uuid"))
+            send_communication_to_messagebus("device", {"ip": ip, "name": name, "uuid": uuid, "description": description})
 
 
 def start_new_service_listener_loop(sock):

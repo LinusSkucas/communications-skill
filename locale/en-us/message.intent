@@ -1,0 +1,5 @@
+message ({device}|) (that|) ({message}|)
+send a message to ({device}|) (that|) ({message}|)
+announce ({device}|) (that|) ({message}|)
+announce on ({device}|) (that|) ({message}|)
+tell ({device}|) (that|) ({message}|)
