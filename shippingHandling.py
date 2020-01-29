@@ -1,4 +1,4 @@
-# Copyright 2019 Linus S.
+# Copyright 2020 Linus S.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Part of the Communications skill to recieve messages and messagebus them over to the skill, which announces them"""
+"""Part of the Communications skill to receive messages and messagebus them over to the skill, which announces them"""
 import time
 
 from mycroft.messagebus.send import send
