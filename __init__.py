@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import threading
-import py2p
-from mycroft import MycroftSkill, intent_file_handler
+from mycroft import MycroftSkill, intent_file_handler, intent_handler
 from mycroft.api import DeviceApi
 from mycroft.util.parse import match_one, normalize
+from adapt.intent import IntentBuilder
+import threading
+import py2p
 import string
 import json
 import time
@@ -59,7 +60,7 @@ class Communications(MycroftSkill):
         L.start()
 
     def _get_ready(self, utter):
-        """Lowercase and normalize any strings get rid of puncuations :)"""
+        """Lowercase and normalize any strings get rid of punctuations :)"""
         return normalize(utter, remove_articles=True).lower().translate({ord(c): None for c in string.punctuation})
 
     def send_intercom(self, message):
@@ -75,27 +76,38 @@ class Communications(MycroftSkill):
     def handle_new_intercom(self, message):
         """A intercom was called"""
         # Get the announcement
-        announcement = json.loads(message.data.get("message"))["data"]
-        self.log.info("New intercom announcement incoming!: {}".format(announcement))
+        data = message.data.get("data")
+        sender_name = message.data.get("sender_name")
+        sender_id = message.data.get("sender_id")
+
+        self.log.info("New intercom announcement incoming!: {}".format(data))
         # Make a BLING sound (Might want to change this)
         self.acknowledge()
-        self.speak_dialog("new.intercom", data={"message": announcement})
+        self.speak_dialog("new.intercom", data={"message": data})
+        self.set_reply_contexts(sender_id=sender_id, sender_name=sender_name)
 
     def handle_new_message(self, message):
         """A message was received"""
-        announcement = message.data.get("message")
-        sender = message.data.get("sender")
+        data = message.data.get("data")
+        sender_name = message.data.get("sender_name")
+        sender_id = message.data.get("sender_id")
 
-        self.log.info("New intercom message incoming!: {}".format(announcement))
+        self.log.info("New intercom message incoming!: {}".format(data))
         # Make a BLING sound (Might want to change this)
         self.acknowledge()
-        self.speak_dialog("new.message", data={"message": announcement, "sender": sender})
+        self.speak_dialog("new.message", data={"message": data, "sender": sender_name})
+        self.set_reply_contexts(sender_id=sender_id, sender_name=sender_name)
+
+    def set_reply_contexts(self, sender_id, sender_name):
+        """Set the reply contexts so users can reply. These are set as recipient..."""
+        self.set_context("recipient_id", sender_id)
+        self.set_context("recipient_name", sender_name)
 
     def handle_new_device(self, message):
-        ip = message.data.get("message")["ip"]
-        name = message.data.get("message")["name"]
-        description = message.data.get("message")["description"]
-        uuid = message.data.get("message")["uuid"]
+        ip = message.data.get("ip")
+        name = message.data.get("name")
+        description = message.data.get("description")
+        uuid = message.data.get("uuid")
         self.log.info("New Mycroft Communications device at: {}".format(ip))
         self.sock.connect(str(ip), 4445)
         self.devices.append({"ip": ip, "name": name, "uuid": uuid, "description": description})  # Add to device list
@@ -139,6 +151,16 @@ class Communications(MycroftSkill):
         self.send_message(message, device_id)
         self.speak_dialog("message.sending")
 
+    @intent_handler(IntentBuilder("ReplyIntent").require("Respond").require("recipient_name")
+                    .require("recipient_id").optionally("Message"))
+    def handle_respond(self, message):
+        recipient_name = message.data.get("recipient_name")
+        recipient_id = message.data.get("recipient_id")
+        reply_message = self.get_response(dialog="reply.message", data={"name": recipient_name}, num_retries=2)
+        if reply_message is None:
+            return
+        self.send_message(message=reply_message, device_id=recipient_id)
+        self.speak_dialog("message.sending")
 
 
 def create_skill():

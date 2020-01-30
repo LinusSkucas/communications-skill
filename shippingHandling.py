@@ -22,8 +22,8 @@ from ifaddr import get_adapters
 import json
 
 
-def send_communication_to_messagebus(msg_type, msg):
-    send("skill.communications.{}.new".format(msg_type), {"message": msg})
+def send_communication_to_messagebus(msg_type, msg: dict):
+    send("skill.communications.{}.new".format(msg_type), msg)
 
 
 def get_ip():
@@ -61,12 +61,16 @@ def start_receiving_Loop(socket, mycroft_id):
             if recipient == "all" or recipient == mycroft_id:
                 if action == "intercom":
                     # Send to messagebus: intercom
-                    send_communication_to_messagebus("intercom", str(msg.packets[1]))
+                    data = json.loads(str(msg.packets[1]))["data"]
+                    sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
+                    sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
+                    send_communication_to_messagebus("intercom", {"data": data, "sender_name": sender, "sender_id": sender_id})
                 elif action == "message":
                     # Handle message
-                    message = json.loads(str(msg.packets[1]))["data"]
-                    sender = json.loads(str(msg.packets))["sender"]["mycroft_name"]
-                    send_communication_to_messagebus("message", {"message": message, "sender": sender})
+                    data = json.loads(str(msg.packets[1]))["data"]
+                    sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
+                    sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
+                    send_communication_to_messagebus("message", {"data": data, "sender_name": sender, "sender_id": sender_id})
                 # Do more handling here
                 else:
                     pass
