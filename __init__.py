@@ -130,26 +130,30 @@ class Communications(MycroftSkill):
 
     @intent_file_handler('message.intent')
     def handle_message(self, message):
+        intercom = False
         device = message.data.get("device")
         while not device:
             device = self.get_response("get.device.name.message")
 
+        # Check if the user wants to send an intercom
+        intercom_names = self.translate_list("intercom.device.names")
+        if device in intercom_names:
+            intercom = True
+
         device_id, confidence = match_one(device, self.devices_recognizion)
-        if confidence < 0.6:
+        if confidence < 0.6 and not intercom:
             return
 
         announcement = message.data.get("message")
         while not announcement:
             announcement = self.get_response("get.new.announcement.name")
-
-        intercom_names = self.translate_list("intercom.device.names")
-        if device in intercom_names:
+        if intercom:
             self.send_intercom(announcement)
             self.speak_dialog("broadcasting.intercom")
             return
-
-        self.send_message(message, device_id)
+        self.send_message(announcement, device_id)
         self.speak_dialog("message.sending")
+
 
     @intent_handler(IntentBuilder("ReplyIntent").require("Respond").require("recipient_name")
                     .require("recipient_id").optionally("Message"))
