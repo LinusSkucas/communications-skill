@@ -112,9 +112,9 @@ class MycroftAdvertisimentListener(object):
         if bool(info.properties) and b"type" in info.properties and info.properties.get(b'type') == b"mycroft_device":
             # Get ip address
             ip = str(ipaddress.ip_address(info.addresses[0]))
-            name = str(info.properties.get(b"name"))
-            description = str(info.properties.get(b"description"))
-            uuid = str(info.properties.get(b"uuid"))
+            name = info.properties.get(b"name").decode()
+            description = info.properties.get(b"description").decode()
+            uuid = info.properties.get(b"uuid").decode()
             send_communication_to_messagebus("device", {"ip": ip, "name": name, "uuid": uuid, "description": description})
 
 
