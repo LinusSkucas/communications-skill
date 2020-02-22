@@ -29,7 +29,7 @@ class Communications(MycroftSkill):
     def __init__(self):
         MycroftSkill.__init__(self)
         self.devices = []
-        self.devices_recognizion = {}
+        self.devices_recognition = {}
 
     def initialize(self):
         self.add_event('skill.communications.intercom.new',
@@ -112,8 +112,8 @@ class Communications(MycroftSkill):
         self.sock.connect(str(ip), 4445)
         self.devices.append({"ip": ip, "name": name, "uuid": uuid, "description": description})  # Add to device list
         for device in self.devices:
-            self.devices_recognizion[str(self._get_ready(device.get("name")))] = str(device.get("uuid"))
-            self.devices_recognizion[str(self._get_ready(device.get("description")))] = str(device.get("uuid"))
+            self.devices_recognition[str(self._get_ready(device.get("name")))] = str(device.get("uuid"))
+            self.devices_recognition[str(self._get_ready(device.get("description")))] = str(device.get("uuid"))
         self.log.info("Done connecting to device")
 
     @intent_file_handler('broadcast.intercom.intent')
@@ -140,7 +140,7 @@ class Communications(MycroftSkill):
         if device in intercom_names:
             intercom = True
 
-        device_id, confidence = match_one(device, self.devices_recognizion)
+        device_id, confidence = match_one(device, self.devices_recognition)
         if confidence < 0.6 and not intercom:
             return
 
@@ -153,7 +153,6 @@ class Communications(MycroftSkill):
             return
         self.send_message(announcement, device_id)
         self.speak_dialog("message.sending")
-
 
     @intent_handler(IntentBuilder("ReplyIntent").require("Respond").require("recipient_name")
                     .require("recipient_id").optionally("Message"))
