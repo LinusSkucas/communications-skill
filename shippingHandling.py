@@ -64,13 +64,15 @@ def start_receiving_Loop(socket, mycroft_id):
                     data = json.loads(str(msg.packets[1]))["data"]
                     sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
                     sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
-                    send_communication_to_messagebus("intercom", {"data": data, "sender_name": sender, "sender_id": sender_id})
+                    send_communication_to_messagebus("intercom",
+                                                     {"data": data, "sender_name": sender, "sender_id": sender_id})
                 elif action == "message":
                     # Handle message
                     data = json.loads(str(msg.packets[1]))["data"]
                     sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
                     sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
-                    send_communication_to_messagebus("message", {"data": data, "sender_name": sender, "sender_id": sender_id})
+                    send_communication_to_messagebus("message",
+                                                     {"data": data, "sender_name": sender, "sender_id": sender_id})
                 # Do more handling here
                 else:
                     pass
@@ -115,7 +117,8 @@ class MycroftAdvertisimentListener(object):
             name = info.properties.get(b"name").decode()
             description = info.properties.get(b"description").decode()
             uuid = info.properties.get(b"uuid").decode()
-            send_communication_to_messagebus("device", {"ip": ip, "name": name, "uuid": uuid, "description": description})
+            send_communication_to_messagebus("device",
+                                             {"ip": ip, "name": name, "uuid": uuid, "description": description})
 
 
 def start_new_service_listener_loop(sock):
