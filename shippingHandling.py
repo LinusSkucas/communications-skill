@@ -23,7 +23,7 @@ import json
 
 
 def send_communication_to_messagebus(msg_type, msg: dict):
-    send("skill.communications.{}.new".format(msg_type), msg)
+    send("skill.communications.{}".format(msg_type), msg)
 
 
 def get_ip():
@@ -56,23 +56,14 @@ def start_receiving_Loop(socket, mycroft_id):
             action = json.loads(str(msg.packets[1]))["action"]
             recipient = json.loads(str(msg.packets[1]))["recipients"]
             # Only react to message if is to me
-            # TODO: CAN BE REFACTORED
-            # Also, don't send the json over the message bus
             if recipient == "all" or recipient == mycroft_id:
-                if action == "intercom":
-                    # Send to messagebus: intercom
-                    data = json.loads(str(msg.packets[1]))["data"]
-                    sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
-                    sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
-                    send_communication_to_messagebus("intercom",
-                                                     {"data": data, "sender_name": sender, "sender_id": sender_id})
-                elif action == "message":
-                    # Handle message
-                    data = json.loads(str(msg.packets[1]))["data"]
-                    sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
-                    sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
+                data = json.loads(str(msg.packets[1]))["data"]
+                sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
+                sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
+                if action == "intercom" or "message":
                     send_communication_to_messagebus("message",
-                                                     {"data": data, "sender_name": sender, "sender_id": sender_id})
+                                                     {"data": data, "sender_name": sender, "sender_id": sender_id,
+                                                      "action": action})
                 # Do more handling here
                 else:
                     pass
@@ -117,7 +108,7 @@ class MycroftAdvertisimentListener(object):
             name = info.properties.get(b"name").decode()
             description = info.properties.get(b"description").decode()
             uuid = info.properties.get(b"uuid").decode()
-            send_communication_to_messagebus("device",
+            send_communication_to_messagebus("device.new",
                                              {"ip": ip, "name": name, "uuid": uuid, "description": description})
 
 

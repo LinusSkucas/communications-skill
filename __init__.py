@@ -19,8 +19,7 @@ from adapt.intent import IntentBuilder
 import threading
 import py2p
 import string
-import json
-import time
+
 
 from . import shippingHandling
 
@@ -32,11 +31,9 @@ class Communications(MycroftSkill):
         self.devices_recognition = {}
 
     def initialize(self):
-        self.add_event('skill.communications.intercom.new',
-                       self.handle_new_intercom)
         self.add_event('skill.communications.device.new',
                        self.handle_new_device)
-        self.add_event('skill.communications.message.new',
+        self.add_event('skill.communications.message',
                        self.handle_new_message)
         # Start the server/ get the socket
         self.sock = py2p.MeshSocket("0.0.0.0", 4445)
@@ -63,39 +60,26 @@ class Communications(MycroftSkill):
         """Lowercase and normalize any strings get rid of punctuations :)"""
         return normalize(utter, remove_articles=True).lower().translate({ord(c): None for c in string.punctuation})
 
-    def send_intercom(self, message):
-        """Send messages to all other devices
-        """
-        shippingHandling.send_message(self.sock, message, message_type="intercom",
-                                      mycroft_id=self.device["uuid"], mycroft_name=self.device["name"])
-
-    def send_message(self, message, device_id):
-        shippingHandling.send_message(self.sock, message, message_type="message", mycroft_id=self.device["uuid"],
-                                      mycroft_name=self.device["name"], recipient=device_id)
-
-    def handle_new_intercom(self, message):
-        """A intercom was called"""
-        # Get the announcement
-        data = message.data.get("data")
-        sender_name = message.data.get("sender_name")
-        sender_id = message.data.get("sender_id")
-
-        self.log.info("New intercom announcement incoming!: {}".format(data))
-        # Make a BLING sound (Might want to change this)
-        self.acknowledge()
-        self.speak_dialog("new.intercom", data={"message": data})
-        self.set_reply_contexts(sender_id=sender_id, sender_name=sender_name)
+    def send_message(self, message, device_id=None, intercom=False):
+        if intercom:
+            device_id = "all"
+        shippingHandling.send_message(self.sock, message, message_type="intercom" if intercom else "message",
+                                      mycroft_id=self.device["uuid"], mycroft_name=self.device["name"], recipient=device_id)
 
     def handle_new_message(self, message):
         """A message was received"""
-        data = message.data.get("data")
+        data = message.data.get("data")  # Here, the data is the message
+        action = message.data.get("action")
         sender_name = message.data.get("sender_name")
         sender_id = message.data.get("sender_id")
 
-        self.log.info("New intercom message incoming!: {}".format(data))
+        self.log.info("New {} message incoming!: {}".format(action, data))
         # Make a BLING sound (Might want to change this)
         self.acknowledge()
-        self.speak_dialog("new.message", data={"message": data, "sender": sender_name})
+        if action is "message":
+            self.speak_dialog("new.message".format(action), data={"message": data, "sender": sender_name})
+        else:
+            self.speak_dialog("new.intercom".format(action), data={"message": data})
         self.set_reply_contexts(sender_id=sender_id, sender_name=sender_name)
 
     def set_reply_contexts(self, sender_id, sender_name):
@@ -125,7 +109,7 @@ class Communications(MycroftSkill):
 
         # OKay, we got the announcement
         # Time to send the message to all...
-        self.send_intercom(announcement)
+        self.send_message(announcement, intercom=True)
         self.speak_dialog('broadcasting.intercom')
 
     @intent_file_handler('message.intent')
@@ -148,7 +132,7 @@ class Communications(MycroftSkill):
         while not announcement:
             announcement = self.get_response("get.new.announcement.name")
         if intercom:
-            self.send_intercom(announcement)
+            self.send_message(announcement, intercom=True)
             self.speak_dialog("broadcasting.intercom")
             return
         self.send_message(announcement, device_id)
