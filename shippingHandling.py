@@ -94,18 +94,18 @@ def start_advertisement_loop(name, uuid, description):
         zeroconf.close()
 
 
-class MycroftAdvertisimentListener(object):
+class MycroftAdvertisementListener:
 
     def remove_service(self, zeroconf, type, name):
-        # We should maybe do something here. Not sure.
+        # Remove the device from available devices
         pass
 
     def add_service(self, zeroconf, service_type, name):
         info = zeroconf.get_service_info(service_type, name)
         if bool(info.properties) and b"type" in info.properties and info.properties.get(b'type') == b"mycroft_device":
             # Get ip address
-            ip = str(ipaddress.ip_address(info.addresses[0]))
             name = info.properties.get(b"name").decode()
+            ip = str(ipaddress.ip_address(info.addresses[0]))
             description = info.properties.get(b"description").decode()
             uuid = info.properties.get(b"uuid").decode()
             send_communication_to_messagebus("device.new",
@@ -117,7 +117,7 @@ def start_new_service_listener_loop(sock):
     global socket
     socket = sock
     zeroconf = Zeroconf()
-    listener = MycroftAdvertisimentListener()
+    listener = MycroftAdvertisementListener()
     browser = ServiceBrowser(zeroconf, "_http._tcp.local.", listener)
     try:
         while True:
