@@ -23,7 +23,7 @@ import json
 
 
 def send_communication_to_messagebus(msg_type, msg: dict):
-    send("skill.communications.{}.new".format(msg_type), msg)
+    send("skill.communications.{}".format(msg_type), msg)
 
 
 def get_ip():
@@ -56,21 +56,14 @@ def start_receiving_Loop(socket, mycroft_id):
             action = json.loads(str(msg.packets[1]))["action"]
             recipient = json.loads(str(msg.packets[1]))["recipients"]
             # Only react to message if is to me
-            # TODO: CAN BE REFACTORED
-            # Also, don't send the json over the message bus
             if recipient == "all" or recipient == mycroft_id:
-                if action == "intercom":
-                    # Send to messagebus: intercom
-                    data = json.loads(str(msg.packets[1]))["data"]
-                    sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
-                    sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
-                    send_communication_to_messagebus("intercom", {"data": data, "sender_name": sender, "sender_id": sender_id})
-                elif action == "message":
-                    # Handle message
-                    data = json.loads(str(msg.packets[1]))["data"]
-                    sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
-                    sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
-                    send_communication_to_messagebus("message", {"data": data, "sender_name": sender, "sender_id": sender_id})
+                data = json.loads(str(msg.packets[1]))["data"]
+                sender = json.loads(str(msg.packets[1]))["sender"]["mycroft_name"]
+                sender_id = json.loads(str(msg.packets[1]))["sender"]["mycroft_id"]
+                if action == "intercom" or "message":
+                    send_communication_to_messagebus("message",
+                                                     {"data": data, "sender_name": sender, "sender_id": sender_id,
+                                                      "action": action})
                 # Do more handling here
                 else:
                     pass
@@ -101,21 +94,22 @@ def start_advertisement_loop(name, uuid, description):
         zeroconf.close()
 
 
-class MycroftAdvertisimentListener(object):
+class MycroftAdvertisementListener:
 
     def remove_service(self, zeroconf, type, name):
-        # We should maybe do something here. Not sure.
+        # Remove the device from available devices
         pass
 
     def add_service(self, zeroconf, service_type, name):
         info = zeroconf.get_service_info(service_type, name)
         if bool(info.properties) and b"type" in info.properties and info.properties.get(b'type') == b"mycroft_device":
             # Get ip address
-            ip = str(ipaddress.ip_address(info.addresses[0]))
             name = info.properties.get(b"name").decode()
+            ip = str(ipaddress.ip_address(info.addresses[0]))
             description = info.properties.get(b"description").decode()
             uuid = info.properties.get(b"uuid").decode()
-            send_communication_to_messagebus("device", {"ip": ip, "name": name, "uuid": uuid, "description": description})
+            send_communication_to_messagebus("device.new",
+                                             {"ip": ip, "name": name, "uuid": uuid, "description": description})
 
 
 def start_new_service_listener_loop(sock):
@@ -123,7 +117,7 @@ def start_new_service_listener_loop(sock):
     global socket
     socket = sock
     zeroconf = Zeroconf()
-    listener = MycroftAdvertisimentListener()
+    listener = MycroftAdvertisementListener()
     browser = ServiceBrowser(zeroconf, "_http._tcp.local.", listener)
     try:
         while True:
